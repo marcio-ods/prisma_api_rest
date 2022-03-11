@@ -1,0 +1,161 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// https://www.youtube.com/watch?v=yMIXyMUVPHo
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  name     String
+
+  broker Broker[] // Corretora/Banco
+  UserLabels UserLabels[] 
+  @@map("user")
+}
+
+model Broker {
+  // Corretora/Banco
+  id      Int     @id @default(autoincrement())
+  user_fk Int
+  name    String
+  CNPJ    String?
+  site    String?
+  contact String?
+
+  user_tb User @relation(fields: [user_fk], references: [id])
+
+  Movement Movement[] // Nota de Corretagem
+  @@map("broker")
+}
+
+
+model Movement {
+  id             Int    @id @default(autoincrement())
+  broker_fk      Int
+  operation_type String // C|V ...
+  asset_fk       Int
+
+  trading_date    DateTime @default(now())
+  settlement_date DateTime @default(now())
+
+  brokerage_note_fk Int?
+
+  asset_tb          Asset          @relation(fields: [asset_fk], references: [id])  
+  broker_tb         Broker         @relation(fields: [broker_fk], references: [id])
+  brokerage_note_tb BrokerageNote? @relation(fields: [brokerage_note_fk], references: [id])
+
+  SystemLabels SystemLabels[]
+  @@map("movement")
+}
+
+model BrokerageNote {
+  // Nota de Corretagem
+  id     Int    @id @default(autoincrement())
+  number String //Número da nota    
+
+  // fees_fk           Int // FK_Fees
+  note_operation_fk Int //FK_note_operatio
+
+  note_operation_tb NoteOperation @relation(fields: [note_operation_fk], references: [id])
+  // fees_tb           Fees          @relation(fields: [fees_fk], references: [id]) // FK_Fees
+  Movement          Movement[]
+  Fees              Fees[]
+  @@map("brokerage_note")
+}
+
+model NoteOperation {
+  // operação da nota de corretagem
+  id         Int    @id @default(autoincrement())
+  quatity    Int
+  unit_price String // preço unitário
+
+  market_fk Int
+
+  market_tb Market @relation(fields: [market_fk], references: [id]) // FK_Fees
+
+  BrokerageNote BrokerageNote[]
+  @@map("note_operation")
+}
+
+model Asset {
+  // Ativo
+  id           Int     @id @default(autoincrement())
+  type         String // SystemLabels Ação|FII|CRIPYTO_TOKEN|CRIPYTO_MOEDA|Moeda 
+  name         String // Labels OI telefonia  \ Moeda brasileira Real
+  code         String? // Labels OIBR3 | BR$
+  CNPJ         String?
+  target_price String?
+  description  String?
+
+  asset_class String? // Labels Classe do ativo Telefonia | Dinheiro
+
+  // asset_class_tb AssetClass? @relation(fields: [asset_class_fk], references: [id])
+
+  Movement Movement[]
+  UserLabels   UserLabels[]
+  SystemLabels SystemLabels[]
+  @@map("asset")
+}
+
+model Fees {
+  // Taxa
+  id                Int           @id @default(autoincrement())
+  name              String
+  value             String
+  description       String?
+  brokerage_note_tb BrokerageNote @relation(fields: [brokerage_note_fk], references: [id])
+
+  brokerage_note_fk Int
+  @@map("fees")
+}
+
+model Market {
+  // Typode mercado Vista|Futuro|trader|Termo
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+
+
+  NoteOperation NoteOperation[]
+  @@map("market")
+}
+
+model SystemLabels {
+  id          Int    @id @default(autoincrement())
+  asset_fk    Int?
+  movement_fk Int?
+  column      String
+  label       String
+  hash        String @unique
+
+  movement_tb Movement? @relation(fields: [movement_fk], references: [id])
+  asset_tb    Asset?    @relation(fields: [asset_fk], references: [id])
+
+  @@map("system-labels")
+}
+
+model UserLabels {
+  id          Int    @id @default(autoincrement())
+  user_fk     Int
+  asset_fk    Int?
+  // movement_fk Int?
+  column      String
+  label       String
+  hash        String @unique
+
+  user_tb     User      @relation(fields: [user_fk], references: [id])
+  // movement_tb Movement? @relation(fields: [movement_fk], references: [id])
+  asset_tb    Asset?    @relation(fields: [asset_fk], references: [id])
+
+  @@map("user-labels")
+}
+
+
